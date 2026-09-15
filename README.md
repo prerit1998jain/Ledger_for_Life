@@ -26,9 +26,11 @@ npm run dev
 Generate `AUTH_SECRET` with `npx auth secret`. `AUTH_ALLOWLIST` should be your own email —
 sign-in is rejected for anyone not on that list (PRD §9, D8).
 
-Without `SMTP_HOST` configured, the magic sign-in link is logged to the server console instead
-of emailed, so you can exercise the whole flow locally without a mail provider. Configure real
-SMTP (Resend, Postmark, SES, Gmail, etc.) before deploying.
+Auth is email + password, not magic links — go to `/forgot-password`, enter your allowlisted
+email, and follow the emailed link to set a password (same flow the first time and every time
+after, if you forget it). Without `SMTP_HOST` configured, that email's content is logged to the
+server console instead, so you can exercise the whole flow locally without a mail provider.
+Configure real SMTP (Resend, Postmark, SES, Gmail, etc.) before deploying.
 
 ### Database migrations
 
@@ -67,8 +69,13 @@ npm run db:studio      # browse the DB with Drizzle Studio
   model assumes a single user. Removing the allowlist and adding onboarding screens is the whole
   multi-user flip (PRD §10); no migration.
 - **Proxy, not Middleware.** Next.js 16 renamed `middleware.ts` to `proxy.ts` and defaults it to
-  the Node.js runtime — this repo's `proxy.ts` relies on that, since session lookups need
-  Postgres access that isn't available on the Edge runtime.
+  the Node.js runtime.
+- **Password auth, JWT sessions.** `lib/auth.ts` uses Auth.js's Credentials provider (email +
+  scrypt-hashed password, `lib/password.ts` — no extra dependency) with JWT sessions, not the
+  database-session/adapter flow, so there's no `accounts`/`sessions` table. Setting or resetting
+  a password reuses one mechanism (`/forgot-password` → emailed single-use token →
+  `/reset-password`) for both "first time" and "forgot it" — the token is stored hashed in
+  `verification_tokens` (SHA-256, 1-hour expiry, consumed on use) via `lib/reset-token.ts`.
 - **AI analysis is not wired up yet.** `/analysis` and `/beliefs` are placeholders. Building
   them needs an `ANTHROPIC_API_KEY`, a model choice (PRD §7/§12 D4), and a live database with
   real entries to sanity-check retrieval and prompts against.
