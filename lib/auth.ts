@@ -19,8 +19,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       // The provider requires a `server` value to construct, but our
       // sendVerificationRequest below never reads it — it opens its own
       // transport from SMTP_* env vars (see lib/mailer.ts).
-      server: process.env.SMTP_HOST ?? "smtp://unused:0",
-      from: process.env.SMTP_FROM ?? "Mind-Space Ledger <no-reply@example.com>",
+      // `||`, not `??`: an env var present but left blank (e.g. pasted from
+      // .env.example into a host's env UI) is "" — falsy but not nullish —
+      // so `??` would silently pass the empty string through.
+      server: process.env.SMTP_HOST || "smtp://unused:0",
+      from: process.env.SMTP_FROM || "Mind-Space Ledger <no-reply@example.com>",
       sendVerificationRequest,
     }),
   ],
