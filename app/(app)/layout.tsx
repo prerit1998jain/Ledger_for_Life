@@ -1,12 +1,6 @@
 import Link from "next/link";
 import { auth, signOut } from "@/lib/auth";
-
-const NAV = [
-  { href: "/entry", label: "Entry" },
-  { href: "/log", label: "Log" },
-  { href: "/analysis", label: "Analysis" },
-  { href: "/beliefs", label: "Beliefs" },
-];
+import { NavLinks } from "./NavLinks";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
@@ -14,16 +8,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="flex flex-1 flex-col">
       <header className="border-b border-border">
-        <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-4">
-          <Link href="/entry" className="font-serif-reflect text-lg">
+        <div className="mx-auto flex max-w-3xl flex-col gap-2 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <Link href="/entry" className="whitespace-nowrap font-serif-reflect text-lg">
             Mind-Space Ledger
           </Link>
-          <nav className="flex items-center gap-5 text-sm">
-            {NAV.map((item) => (
-              <Link key={item.href} href={item.href} className="text-muted hover:text-foreground">
-                {item.label}
-              </Link>
-            ))}
+          <nav className="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm">
+            <NavLinks />
             <form
               action={async () => {
                 "use server";
