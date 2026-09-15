@@ -1,3 +1,4 @@
+import { AuthCard } from "../AuthCard";
 import { ResetPasswordForm } from "./ResetPasswordForm";
 
 export default async function ResetPasswordPage({
@@ -9,19 +10,18 @@ export default async function ResetPasswordPage({
 
   if (!email || !token) {
     return (
-      <div className="flex flex-1 items-center justify-center px-6">
-        <p className="text-sm text-danger">This link is missing its email or token.</p>
-      </div>
+      <AuthCard title="Link problem">
+        <p className="text-sm text-danger">
+          This link is missing its email or token — copy the full link from the email, or
+          request a new one from the forgot-password page.
+        </p>
+      </AuthCard>
     );
   }
 
   return (
-    <div className="flex flex-1 items-center justify-center px-6">
-      <div className="w-full max-w-sm">
-        <h1 className="font-serif-reflect text-2xl mb-1">Set your password</h1>
-        <p className="text-sm text-muted mb-6">For {email}. At least 8 characters.</p>
-        <ResetPasswordForm email={email} token={token} />
-      </div>
-    </div>
+    <AuthCard title="Set your password" description={`For ${email}. At least 8 characters.`}>
+      <ResetPasswordForm email={email} token={token} />
+    </AuthCard>
   );
 }

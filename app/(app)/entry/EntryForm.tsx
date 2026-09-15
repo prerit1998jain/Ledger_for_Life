@@ -90,8 +90,29 @@ export function EntryForm({
 
   const themeSuggestions = useMemo(() => knownThemes, [knownThemes]);
 
+  // A category is "on the menu today" once it has a key in `sections` at
+  // all (even an empty string) — that's what makes the field visible. This
+  // is what makes the composer a menu rather than a checklist (PRD
+  // principle 4): only categories you've explicitly picked show a field.
+  const activeCategories = useMemo(
+    () => CATEGORY_ORDER.filter((key) => key in state.sections),
+    [state.sections],
+  );
+
   function updateSection(key: CategoryKey, value: string) {
     setState((s) => ({ ...s, sections: { ...s.sections, [key]: value } }));
+  }
+
+  function addCategory(key: CategoryKey) {
+    setState((s) => (key in s.sections ? s : { ...s, sections: { ...s.sections, [key]: "" } }));
+  }
+
+  function removeCategory(key: CategoryKey) {
+    setState((s) => {
+      const sections = { ...s.sections };
+      delete sections[key];
+      return { ...s, sections };
+    });
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -189,26 +210,75 @@ export function EntryForm({
         </datalist>
       </label>
 
-      <div className="flex flex-col gap-5 border-t border-border pt-6">
-        {CATEGORY_ORDER.map((key) => (
-          <label
+      <div className="flex flex-col gap-4 border-t border-border pt-6">
+        <div>
+          <p className="mb-2 text-sm text-muted">
+            What&apos;s live today? Pick as many or as few as apply.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {CATEGORY_ORDER.map((key) => {
+              const active = key in state.sections;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => (active ? removeCategory(key) : addCategory(key))}
+                  aria-pressed={active}
+                  className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
+                    active
+                      ? "border-accent bg-accent text-accent-foreground"
+                      : "border-border text-muted hover:border-accent hover:text-foreground"
+                  }`}
+                >
+                  {CATEGORY_LABELS[key]}
+                  {key === "passive" && (
+                    <span
+                      className={`ml-1.5 text-xs ${active ? "text-accent-foreground/70" : "text-accent"}`}
+                    >
+                      ★
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {activeCategories.length === 0 && (
+          <p className="text-sm text-muted italic">
+            Nothing picked yet — tap a category above, or just save with a summary or tenor.
+          </p>
+        )}
+
+        {activeCategories.map((key) => (
+          <div
             key={key}
             className={`flex flex-col gap-1 text-sm ${key === "passive" ? "ml-4 border-l border-border pl-4" : ""}`}
           >
-            <span>
-              {CATEGORY_LABELS[key]}
-              {key === "passive" && (
-                <span className="ml-2 rounded bg-accent/10 px-1.5 py-0.5 text-xs text-accent">
-                  priority
-                </span>
-              )}
-            </span>
+            <div className="flex items-center justify-between">
+              <span>
+                {CATEGORY_LABELS[key]}
+                {key === "passive" && (
+                  <span className="ml-2 rounded bg-accent/10 px-1.5 py-0.5 text-xs text-accent">
+                    priority
+                  </span>
+                )}
+              </span>
+              <button
+                type="button"
+                onClick={() => removeCategory(key)}
+                className="text-xs text-muted hover:text-danger"
+                aria-label={`Remove ${CATEGORY_LABELS[key]}`}
+              >
+                Remove
+              </button>
+            </div>
             <span className="text-xs text-muted">{CATEGORY_HINTS[key]}</span>
             <AutoGrowTextarea
               value={state.sections[key] ?? ""}
               onChange={(v) => updateSection(key, v)}
             />
-          </label>
+          </div>
         ))}
       </div>
 

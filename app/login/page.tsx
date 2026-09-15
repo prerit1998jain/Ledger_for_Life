@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
+import { AuthCard } from "../AuthCard";
 import { LoginForm } from "./LoginForm";
 
 export default async function LoginPage() {
@@ -9,14 +10,11 @@ export default async function LoginPage() {
   }
 
   return (
-    <div className="flex flex-1 items-center justify-center px-6">
-      <div className="w-full max-w-sm">
-        <h1 className="font-serif-reflect text-2xl mb-1">Mind-Space Ledger</h1>
-        <p className="text-sm text-muted mb-6">
-          A private record of your own thinking. Sign in with the email on the allowlist.
-        </p>
-        <LoginForm />
-      </div>
-    </div>
+    <AuthCard
+      title="Mind-Space Ledger"
+      description="A private record of your own thinking. Sign in with the email on the allowlist."
+    >
+      <LoginForm />
+    </AuthCard>
   );
 }
