@@ -1,47 +1,52 @@
 import NextAuth from "next-auth";
-import Nodemailer from "next-auth/providers/nodemailer";
-import { DrizzleAdapter } from "@auth/drizzle-adapter";
+import Credentials from "next-auth/providers/credentials";
+import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import * as schema from "@/db/schema";
+import { users } from "@/db/schema";
 import { isAllowlisted } from "@/lib/allowlist";
-import { sendVerificationRequest } from "@/lib/mailer";
+import { verifyPassword } from "@/lib/password";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  adapter: DrizzleAdapter(db, {
-    usersTable: schema.users,
-    accountsTable: schema.accounts,
-    sessionsTable: schema.sessions,
-    verificationTokensTable: schema.verificationTokens,
-  }),
-  session: { strategy: "database" },
+  // Credentials requires JWT sessions — there's no OAuth "account" to persist
+  // and no server-side session store (PRD §9 D8 gate + password auth,
+  // deliberately simpler than the Auth.js adapter/database-session flow).
+  session: { strategy: "jwt" },
   providers: [
-    Nodemailer({
-      // The provider requires a `server` value to construct, but our
-      // sendVerificationRequest below never reads it — it opens its own
-      // transport from SMTP_* env vars (see lib/mailer.ts).
-      // `||`, not `??`: an env var present but left blank (e.g. pasted from
-      // .env.example into a host's env UI) is "" — falsy but not nullish —
-      // so `??` would silently pass the empty string through.
-      server: process.env.SMTP_HOST || "smtp://unused:0",
-      from: process.env.SMTP_FROM || "Mind-Space Ledger <no-reply@example.com>",
-      sendVerificationRequest,
+    Credentials({
+      credentials: {
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" },
+      },
+      async authorize(credentials) {
+        const email = typeof credentials?.email === "string" ? credentials.email.trim().toLowerCase() : "";
+        const password = typeof credentials?.password === "string" ? credentials.password : "";
+        if (!email || !password) return null;
+
+        // Allowlist gate (PRD §9 D8) — checked here, not just at signup,
+        // so a de-allowlisted email can't keep signing in with an old password.
+        if (!isAllowlisted(email)) return null;
+
+        const [user] = await db.select().from(users).where(eq(users.email, email));
+        if (!user?.passwordHash) return null;
+
+        const valid = await verifyPassword(password, user.passwordHash);
+        if (!valid) return null;
+
+        return { id: user.id, email: user.email, name: user.name };
+      },
     }),
   ],
   pages: {
     signIn: "/login",
-    verifyRequest: "/login/verify-request",
   },
   callbacks: {
-    // Runs before a verification email is sent, and again on OAuth-style
-    // callbacks. Returning false here is the allowlist gate (PRD §9 D8):
-    // it blocks both magic-link issuance and sign-in completion for any
-    // email not on AUTH_ALLOWLIST.
-    async signIn({ user }) {
-      return isAllowlisted(user.email);
+    async jwt({ token, user }) {
+      if (user) token.id = user.id;
+      return token;
     },
-    async session({ session, user }) {
-      if (session.user) {
-        session.user.id = user.id;
+    async session({ session, token }) {
+      if (session.user && typeof token.id === "string") {
+        session.user.id = token.id;
       }
       return session;
     },

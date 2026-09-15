@@ -1,31 +1,22 @@
 import "server-only";
 import nodemailer from "nodemailer";
-import type { NodemailerConfig } from "next-auth/providers/nodemailer";
-
-type SendVerificationRequestParams = Parameters<NodemailerConfig["sendVerificationRequest"]>[0];
 
 /**
- * Sends the magic-link email. In production this requires SMTP_* env vars
- * (any provider — Resend, Postmark, SES, Gmail SMTP, etc). In local
- * development, when SMTP isn't configured, the link is logged to the
- * console instead of emailed so the sign-in flow can be exercised without
- * a mail provider.
+ * Sends an email. In production this requires SMTP_* env vars (any
+ * provider — Resend, Postmark, SES, Gmail SMTP, etc). In local development,
+ * when SMTP isn't configured, the content is logged to the console instead
+ * so flows (like password reset) can be exercised without a mail provider.
  */
-export async function sendVerificationRequest({
-  identifier: email,
-  url,
-  provider,
-}: SendVerificationRequestParams) {
-  const host = new URL(url).host;
+export async function sendMail(params: { to: string; subject: string; text: string; html: string }) {
   const hasSmtp = Boolean(process.env.SMTP_HOST);
 
   if (!hasSmtp) {
     if (process.env.NODE_ENV === "production") {
       throw new Error(
-        "SMTP_HOST is not configured. Set SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASSWORD (or another mailer) to send magic links in production.",
+        "SMTP_HOST is not configured. Set SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASSWORD (or another mailer) to send email in production.",
       );
     }
-    console.log(`\n[dev] Magic sign-in link for ${email}:\n${url}\n`);
+    console.log(`\n[dev] Email to ${params.to} — ${params.subject}:\n${params.text}\n`);
     return;
   }
 
@@ -39,10 +30,10 @@ export async function sendVerificationRequest({
   });
 
   await transport.sendMail({
-    to: email,
-    from: provider.from,
-    subject: `Sign in to Mind-Space Ledger`,
-    text: `Sign in to Mind-Space Ledger (${host})\n\n${url}\n\nIf you did not request this, ignore this email.`,
-    html: `<p>Sign in to <strong>Mind-Space Ledger</strong> (${host}).</p><p><a href="${url}">Click here to sign in</a></p><p>If you did not request this, ignore this email.</p>`,
+    to: params.to,
+    from: process.env.SMTP_FROM || "Mind-Space Ledger <no-reply@example.com>",
+    subject: params.subject,
+    text: params.text,
+    html: params.html,
   });
 }

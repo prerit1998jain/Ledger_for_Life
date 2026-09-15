@@ -15,6 +15,13 @@
       "when": 1789294135658,
       "tag": "0001_row_level_security",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789471420951,
+      "tag": "0002_ambitious_nova",
+      "breakpoints": true
     }
   ]
 }

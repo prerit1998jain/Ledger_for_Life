@@ -1,14 +1,17 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 
-// Runs on the Node.js runtime by default in Next.js 16, which is required
-// here since session lookups hit Postgres via the Drizzle adapter.
+// Runs on the Node.js runtime by default in Next.js 16.
 export default auth((req) => {
   const isLoggedIn = Boolean(req.auth);
-  const isLoginPage = req.nextUrl.pathname.startsWith("/login");
-  const isAuthApi = req.nextUrl.pathname.startsWith("/api/auth");
+  const { pathname } = req.nextUrl;
+  const isPublicPage =
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/forgot-password") ||
+    pathname.startsWith("/reset-password");
+  const isAuthApi = pathname.startsWith("/api/auth");
 
-  if (isAuthApi || isLoginPage) {
+  if (isAuthApi || isPublicPage) {
     return NextResponse.next();
   }
 

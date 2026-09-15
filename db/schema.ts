@@ -6,18 +6,21 @@ import {
   timestamp,
   uuid,
   date,
-  integer,
   primaryKey,
   jsonb,
   uniqueIndex,
   index,
 } from "drizzle-orm/pg-core";
-import type { AdapterAccountType } from "next-auth/adapters";
 import { CATEGORY_KEYS } from "@/lib/categories";
 
 // ---------------------------------------------------------------------------
-// Identity (Auth.js Drizzle adapter tables). `users.id` is the `user_id`
-// referenced by every owned table below — see PRD §5 "Multi-user rule".
+// Identity. `users.id` is the `user_id` referenced by every owned table
+// below — see PRD §5 "Multi-user rule". Auth is email+password (Credentials
+// provider, JWT sessions) rather than Auth.js's database-session/adapter
+// flow, so there's no `accounts`/`sessions` table — nothing persists a
+// server-side session, and there are no OAuth providers to link accounts
+// for. `verification_tokens` is kept and reused for password-reset tokens
+// (see lib/reset-token.ts): identifier/token/expires already fits that use.
 // ---------------------------------------------------------------------------
 
 export const users = pgTable("users", {
@@ -26,37 +29,8 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   emailVerified: timestamp("email_verified", { mode: "date" }),
   image: text("image"),
+  passwordHash: text("password_hash"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
-
-export const accounts = pgTable(
-  "accounts",
-  {
-    userId: uuid("user_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    type: text("type").$type<AdapterAccountType>().notNull(),
-    provider: text("provider").notNull(),
-    providerAccountId: text("provider_account_id").notNull(),
-    refresh_token: text("refresh_token"),
-    access_token: text("access_token"),
-    expires_at: integer("expires_at"),
-    token_type: text("token_type"),
-    scope: text("scope"),
-    id_token: text("id_token"),
-    session_state: text("session_state"),
-  },
-  (table) => [
-    primaryKey({ columns: [table.provider, table.providerAccountId] }),
-  ],
-);
-
-export const sessions = pgTable("sessions", {
-  sessionToken: text("session_token").primaryKey(),
-  userId: uuid("user_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  expires: timestamp("expires", { mode: "date" }).notNull(),
 });
 
 export const verificationTokens = pgTable(
